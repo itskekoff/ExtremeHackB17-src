@@ -1,0 +1,45 @@
+package optifine;
+
+import java.util.List;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.util.ResourceLocation;
+import optifine.Config;
+import optifine.ReflectorForge;
+
+public class SpriteDependencies {
+    public static TextureAtlasSprite resolveDependencies(List<TextureAtlasSprite> p_resolveDependencies_0_, int p_resolveDependencies_1_, TextureMap p_resolveDependencies_2_) {
+        TextureAtlasSprite textureatlassprite = p_resolveDependencies_0_.get(p_resolveDependencies_1_);
+        while (SpriteDependencies.resolveOne(p_resolveDependencies_0_, p_resolveDependencies_1_, textureatlassprite, p_resolveDependencies_2_)) {
+            textureatlassprite = p_resolveDependencies_0_.get(p_resolveDependencies_1_);
+        }
+        textureatlassprite.isDependencyParent = false;
+        return textureatlassprite;
+    }
+
+    private static boolean resolveOne(List<TextureAtlasSprite> p_resolveOne_0_, int p_resolveOne_1_, TextureAtlasSprite p_resolveOne_2_, TextureMap p_resolveOne_3_) {
+        int i2 = 0;
+        for (ResourceLocation resourcelocation : p_resolveOne_2_.getDependencies()) {
+            Config.dbg("Sprite dependency: " + p_resolveOne_2_.getIconName() + " <- " + resourcelocation);
+            TextureAtlasSprite textureatlassprite = p_resolveOne_3_.getRegisteredSprite(resourcelocation);
+            if (textureatlassprite == null) {
+                textureatlassprite = p_resolveOne_3_.registerSprite(resourcelocation);
+            } else {
+                int j2 = p_resolveOne_0_.indexOf(textureatlassprite);
+                if (j2 <= p_resolveOne_1_ + i2) continue;
+                if (textureatlassprite.isDependencyParent) {
+                    String s2 = "circular dependency: " + p_resolveOne_2_.getIconName() + " -> " + textureatlassprite.getIconName();
+                    ResourceLocation resourcelocation1 = p_resolveOne_3_.getResourceLocation(p_resolveOne_2_);
+                    ReflectorForge.FMLClientHandler_trackBrokenTexture(resourcelocation1, s2);
+                    break;
+                }
+                p_resolveOne_0_.remove(j2);
+            }
+            p_resolveOne_2_.isDependencyParent = true;
+            p_resolveOne_0_.add(p_resolveOne_1_ + i2, textureatlassprite);
+            ++i2;
+        }
+        return i2 > 0;
+    }
+}
+
